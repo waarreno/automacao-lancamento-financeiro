@@ -1,0 +1,37 @@
+{
+  "name": "automacao-lancamento-financeiro",
+  "version": "1.4.0",
+  "description": "Automação para lançamento financeiro manual no sistema TopSaude - Unimed Cerrado",
+  "main": "script.js",
+  "scripts": {
+    "start": "node script.js",
+    "install-browsers": "npx playwright install chromium",
+    "test": "node script.js --dry-run"
+  },
+  "keywords": [
+    "automacao",
+    "rpa",
+    "playwright",
+    "financeiro",
+    "unimed",
+    "topsaude"
+  ],
+  "author": "Wárreno Hendrick Costa Lima Guimarães",
+  "license": "UNLICENSED",
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "playwright": "^1.48.0",
+    "xlsx": "^0.18.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "bugs": {
+    "email": "warreno@outlook.com.br"
+  },
+  "devDependencies": {}
+}

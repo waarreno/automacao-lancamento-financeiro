@@ -1,0 +1,65 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Node.js Portable
+node-portable/
+
+# Planilhas e dados sensíveis
+*.xlsx
+*.xls
+*.xlsm
+
+# Exceções - arquivos que devem ser versionados
+!projeto/dados_lancamento.xlsx
+!projeto/ConverterJSONParaExcel.xlsm
+
+# Logs e relatórios
+*.log
+log_*.json
+relatorio_execucao_*.json
+
+# Screenshots e evidências
+*.png
+*.jpg
+*.jpeg
+erro_*.png
+screenshot_*.png
+
+# Arquivos temporários
+*.tmp
+*.temp
+~$*
+
+# Sistema Operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE e editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Credenciais e configurações sensíveis
+.env
+.env.local
+credentials.json
+config.local.js
+
+# Builds e distribuição
+dist/
+build/
+*.zip
+*.rar
+*.7z
+
+# Playwright
+playwright/.cache/
+test-results/
+playwright-report/
