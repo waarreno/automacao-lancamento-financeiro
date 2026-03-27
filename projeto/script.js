@@ -221,7 +221,7 @@ async function criarRelatorioExecucao(dadosProcessados, sucessos, erros, tempoEx
         total_linhas: dadosProcessados.length,
         sucessos: sucessos,
         erros: erros,
-        taxa_sucesso: `${((sucessos / dadosProcessados.length) * 100).toFixed(1)}%`,
+        taxa_sucesso: dadosProcessados.length > 0 ? `${((sucessos / dadosProcessados.length) * 100).toFixed(1)}%` : 'N/A',
         configuracoes_utilizadas: CONFIG,
         detalhes: dadosProcessados
     };
@@ -265,7 +265,7 @@ async function fazerLoginAutomatico(page) {
 }
 
 async function automatizarUnimed() {
-    const inicioExecucao = Date.now();
+    estadoExecucao.inicioExecucao = Date.now();
     console.log('🚀 Iniciando Automação');
     console.log('⚠️ ATENÇÃO: Esta execução VAI SALVAR os lançamentos no sistema!');
     console.log('════════════════════════════════════════════════════════════');
@@ -273,15 +273,15 @@ async function automatizarUnimed() {
     const todosOsDados = await lerPlanilhaExcel();
     logComTimestamp(`📊 Total de lançamentos a processar: ${todosOsDados.length}`);
 
-    let sucessos = 0;
-    let erros = 0;
-    const resultadosDetalhados = [];
+    // Referências ao estado global para atualização em tempo real
+    const resultadosDetalhados = estadoExecucao.resultadosDetalhados;
 
     // Iniciar o navegador em modo headless
     const browser = await chromium.launch({
         headless: true,
         timeout: 60000
     });
+    estadoExecucao.browser = browser;
 
     const page = await browser.newPage();
     page.setDefaultTimeout(CONFIG.TIMEOUT_NAVEGACAO);
@@ -338,7 +338,7 @@ async function automatizarUnimed() {
                     resultadoValidacao = await verificarSucessoLancamento(page);
 
                     if (resultadoValidacao.sucesso) {
-                        sucessos++;
+                        estadoExecucao.sucessos++;
                         sucessoLancamento = true;
                         resultadosDetalhados.push({
                             linha: numeroLancamento,
@@ -361,7 +361,7 @@ async function automatizarUnimed() {
                     if (tentativasRestantes > 0) {
                         logComTimestamp(`🔄 Tentando novamente... (${tentativasRestantes} tentativa(s) restante(s))`);
                     } else {
-                        erros++;
+                        estadoExecucao.erros++;
                         resultadosDetalhados.push({
                             linha: numeroLancamento,
                             status: 'ERRO',
@@ -386,7 +386,8 @@ async function automatizarUnimed() {
 
         // ===== RELATÓRIO FINAL MESMO EM CASO DE ERRO CRÍTICO =====
         const fimExecucao = Date.now();
-        const tempoExecucao = fimExecucao - inicioExecucao;
+        const tempoExecucao = fimExecucao - estadoExecucao.inicioExecucao;
+        const { sucessos, erros } = estadoExecucao;
 
         console.log(`
 🎉 === PROCESSAMENTO CONCLUÍDO ===`);
@@ -428,8 +429,8 @@ async function automatizarUnimed() {
 
         // Gera relatório mesmo em caso de erro crítico
         const fimExecucao = Date.now();
-        const tempoExecucao = fimExecucao - inicioExecucao;
-        const arquivoRelatorioParcial = await criarRelatorioExecucao(resultadosDetalhados, sucessos, erros, tempoExecucao);
+        const tempoExecucao = fimExecucao - estadoExecucao.inicioExecucao;
+        const arquivoRelatorioParcial = await criarRelatorioExecucao(resultadosDetalhados, estadoExecucao.sucessos, estadoExecucao.erros, tempoExecucao);
         if (arquivoRelatorioParcial) {
             logComTimestamp(`📄 Relatório PARCIAL de execução salvo devido ao erro: ${arquivoRelatorioParcial}`);
         } else {
@@ -461,6 +462,7 @@ async function automatizarUnimed() {
 
         throw error; // Re-lança o erro para ser capturado pela função principal
     } finally {
+        estadoExecucao.browser = null; // Limpa referência para evitar duplo fechamento
         try {
             await browser.close();
             logComTimestamp('🏁 Navegador fechado');
@@ -468,6 +470,53 @@ async function automatizarUnimed() {
             logComTimestamp('⚠️ Erro ao fechar navegador:', closeError.message);
         }
     }
+}
+
+// ===== ESTADO GLOBAL PARA ENCERRAMENTO GRACIOSO =====
+const estadoExecucao = {
+    inicioExecucao: null,
+    resultadosDetalhados: [],
+    sucessos: 0,
+    erros: 0,
+    browser: null,
+    encerrando: false
+};
+
+async function encerrarComRelatorio(motivo, codigoSaida = 0) {
+    if (estadoExecucao.encerrando) return;
+    estadoExecucao.encerrando = true;
+
+    console.log(`\n🛑 ${motivo}`);
+
+    const tempoExecucao = estadoExecucao.inicioExecucao ? Date.now() - estadoExecucao.inicioExecucao : 0;
+
+    if (estadoExecucao.resultadosDetalhados.length > 0 || estadoExecucao.inicioExecucao) {
+        logComTimestamp('📄 Gerando relatório parcial da execução...');
+        try {
+            const arquivoRelatorio = await criarRelatorioExecucao(
+                estadoExecucao.resultadosDetalhados,
+                estadoExecucao.sucessos,
+                estadoExecucao.erros,
+                tempoExecucao
+            );
+            if (arquivoRelatorio) {
+                logComTimestamp(`📄 Relatório parcial salvo: ${arquivoRelatorio}`);
+            }
+        } catch (e) {
+            logComTimestamp(`⚠️ Erro ao gerar relatório parcial: ${e.message}`);
+        }
+    }
+
+    if (estadoExecucao.browser) {
+        try {
+            await estadoExecucao.browser.close();
+            logComTimestamp('🏁 Navegador fechado');
+        } catch (e) {
+            // ignora erro ao fechar
+        }
+    }
+
+    process.exit(codigoSaida);
 }
 
 // ===== VERIFICAÇÃO DE SEGURANÇA ANTES DA EXECUÇÃO =====
@@ -537,21 +586,18 @@ async function main() {
     }
 }
 
-// Captura sinais de interrupção para limpeza
+// Captura sinais de interrupção para limpeza com geração de relatório parcial
 process.on('SIGINT', () => {
-    console.log('🛑 Automação interrompida pelo usuário');
-    console.log('🧹 Fazendo limpeza...');
-    process.exit(0);
+    encerrarComRelatorio('Automação interrompida pelo usuário (Ctrl+C)', 0);
 });
 
 process.on('SIGTERM', () => {
-    console.log('🛑 Automação terminada externamente');
-    process.exit(0);
+    encerrarComRelatorio('Automação terminada externamente (SIGTERM)', 0);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason) => {
     console.error('❌ Erro não tratado:', reason);
-    process.exit(1);
+    encerrarComRelatorio('Encerrando devido a erro não tratado', 1);
 });
 
 // Executa o programa principal
