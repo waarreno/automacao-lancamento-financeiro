@@ -453,6 +453,6 @@ Possíveis melhorias futuras:
 
 **🤖 Automação desenvolvida com foco em segurança, confiabilidade e facilidade de uso.**
 
-*Última atualização: Outubro/2025*
+*Última atualização: março/2026*
 
 Feito com ❤️ para a área de Contas Médicas da Unimed Cerrado

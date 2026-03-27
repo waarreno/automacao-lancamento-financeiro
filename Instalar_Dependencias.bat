@@ -6,8 +6,8 @@ cd /d "%~dp0"
 
 echo ============================================================
 echo    SETUP INICIAL - AUTOMACAO LANCAMENTO FINANCEIRO MANUAL
-echo        (c) 2025 Warreno Hendrick Costa Lima Guimaraes
-echo                         Versao 1.4
+echo        (c) 2026 Warreno Hendrick Costa Lima Guimaraes
+echo                       Versao 1.4.2
 echo ============================================================
 echo.
 echo Este processo ira:
